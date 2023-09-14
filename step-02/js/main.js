@@ -24,12 +24,17 @@ let startTime = null;
 // Define peer connections, streams and video elements.
 const localVideo = document.getElementById('localVideo');
 const remoteVideo = document.getElementById('remoteVideo');
+const downloadLink = document.getElementById('downloadLink');
 
 let localStream;
 let remoteStream;
 
 let localPeerConnection;
 let remotePeerConnection;
+
+let mediaRecorder;
+let chunks = [];
+let recordingTimeout;
 
 
 // Define MediaStreams callbacks.
@@ -53,6 +58,11 @@ function gotRemoteMediaStream(event) {
   remoteVideo.srcObject = mediaStream;
   remoteStream = mediaStream;
   trace('Remote peer connection received remote stream.');
+  mediaRecorder = new MediaRecorder(mediaStream);
+  mediaRecorder.start()
+  mediaRecorder.ondataavailable = (e) => {
+    chunks.push(e.data);
+  };
 }
 
 
@@ -192,6 +202,8 @@ const startButton = document.getElementById('startButton');
 const callButton = document.getElementById('callButton');
 const hangupButton = document.getElementById('hangupButton');
 
+
+
 // Set up initial action buttons status: disable call and hangup.
 callButton.disabled = true;
 hangupButton.disabled = true;
@@ -226,14 +238,14 @@ function callAction() {
   const servers = null;  // Allows for RTC server configuration.
 
   // Create peer connections and add behavior.
-  localPeerConnection = new RTCPeerConnection(servers);
+  window.localPeerConnection = localPeerConnection = new RTCPeerConnection(servers);
   trace('Created local peer connection object localPeerConnection.');
 
   localPeerConnection.addEventListener('icecandidate', handleConnection);
   localPeerConnection.addEventListener(
     'iceconnectionstatechange', handleConnectionChange);
 
-  remotePeerConnection = new RTCPeerConnection(servers);
+  window.remotePeerConnection = remotePeerConnection = new RTCPeerConnection(servers);
   trace('Created remote peer connection object remotePeerConnection.');
 
   remotePeerConnection.addEventListener('icecandidate', handleConnection);
@@ -249,47 +261,18 @@ function callAction() {
   localPeerConnection.createOffer(offerOptions)
     .then(createdOffer).catch(setSessionDescriptionError);
 
-  
-  console.log("localvideo.")
-  console.log("localvideo.")
-  console.log(localvideo.srcObject)
-  console.log(remoteStream)
-  console.log("localvideo.")
-  console.log("localvideo.")
+  // Creates DataChannel
+  dataConstraint = null;
+  sendChannel = remotePeerConnection.createDataChannel('sendDataChannel',
+  dataConstraint);
+  trace('Created send data channel');d
 
-
-
-  console.log("remoteVideo.srcObject")
-  console.log("remoteVideo.srcObject")
-  console.log(remoteVideo.srcObject)
-  console.log(remoteStream)
-  console.log("remoteVideo.srcObject")
-  console.log("remoteVideo.srcObject")
-
-  mediaRecorder = new MediaRecorder(remoteVideo.srcObject);
-  mediaRecorder.ondataavailable = function (event) {
-      if (event.data.size > 0) {
-          chunks.push(event.data);
-      }
+  sendChannel.onerror = function (error) {
+    console.log("DC Error:", error);
   };
-
-  mediaRecorder.onstop = function () {
-      const blob = new Blob(chunks, { type: 'video/webm' });
-      const videoUrl = URL.createObjectURL(blob);
-      downloadLink.href = videoUrl;
-      downloadLink.style.display = 'block';
-      downloadLink.download = 'step2.webm';
-      chunks = [];
-  };
-
-  mediaRecorder.start();
-  console.log("START")
   
-  recordingTimeout = setTimeout(function () {
-      mediaRecorder.stop();
-  }, 30000);
-
 }
+
 
 // Handles hangup action: ends up call, closes connections and resets peers.
 function hangupAction() {
@@ -299,6 +282,15 @@ function hangupAction() {
   remotePeerConnection = null;
   hangupButton.disabled = true;
   callButton.disabled = false;
+  mediaRecorder.stop()
+  mediaRecorder.onstop = function () {
+    const blob = new Blob(chunks, { type: 'video/webm' });
+    const videoUrl = URL.createObjectURL(blob);
+    downloadLink.href = videoUrl;
+    downloadLink.style.display = 'block';
+    downloadLink.download = 'record.webm';
+    chunks = [];
+  };
   trace('Ending call.');
 }
 
