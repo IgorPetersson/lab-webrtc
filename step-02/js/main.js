@@ -8,6 +8,11 @@ const mediaStreamConstraints = {
   video: true,
 };
 
+const downloadLink = document.getElementById('downloadLink');
+let mediaRecorder;
+let chunks = [];
+let recordingTimeout;
+
 // Set up to exchange only video.
 const offerOptions = {
   offerToReceiveVideo: 1,
@@ -243,6 +248,47 @@ function callAction() {
   trace('localPeerConnection createOffer start.');
   localPeerConnection.createOffer(offerOptions)
     .then(createdOffer).catch(setSessionDescriptionError);
+
+  
+  console.log("localvideo.")
+  console.log("localvideo.")
+  console.log(localvideo.srcObject)
+  console.log(remoteStream)
+  console.log("localvideo.")
+  console.log("localvideo.")
+
+
+
+  console.log("remoteVideo.srcObject")
+  console.log("remoteVideo.srcObject")
+  console.log(remoteVideo.srcObject)
+  console.log(remoteStream)
+  console.log("remoteVideo.srcObject")
+  console.log("remoteVideo.srcObject")
+
+  mediaRecorder = new MediaRecorder(remoteVideo.srcObject);
+  mediaRecorder.ondataavailable = function (event) {
+      if (event.data.size > 0) {
+          chunks.push(event.data);
+      }
+  };
+
+  mediaRecorder.onstop = function () {
+      const blob = new Blob(chunks, { type: 'video/webm' });
+      const videoUrl = URL.createObjectURL(blob);
+      downloadLink.href = videoUrl;
+      downloadLink.style.display = 'block';
+      downloadLink.download = 'step2.webm';
+      chunks = [];
+  };
+
+  mediaRecorder.start();
+  console.log("START")
+  
+  recordingTimeout = setTimeout(function () {
+      mediaRecorder.stop();
+  }, 30000);
+
 }
 
 // Handles hangup action: ends up call, closes connections and resets peers.

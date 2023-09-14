@@ -15,6 +15,7 @@ navigator.mediaDevices.getUserMedia({ video: true })
     });
 
 startRecordButton.addEventListener('click', function () {
+    console.log("videoElement.srcObject ", videoElement.srcObject)
     mediaRecorder = new MediaRecorder(videoElement.srcObject);
     mediaRecorder.ondataavailable = function (event) {
         if (event.data.size > 0) {
